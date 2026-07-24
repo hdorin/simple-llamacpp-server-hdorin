@@ -1,0 +1,7 @@
+{
+  "version": "0.1.0",
+  "uuid": "simple-llamacpp-server@hdorin",
+  "name": "Simple LLama.cpp Server Runner",
+  "max-instances": 1,
+  "description": "test test test"
+}
