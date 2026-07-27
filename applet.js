@@ -8,8 +8,8 @@ const GLib = imports.gi.GLib;
 const Lang = imports.lang;
 
 const NO_MODEL_LOADED = "None";
-const DEFAULT_LOAD_COMMAND_PREFIX = "llama serve -hf "
-
+//const DEFAULT_LOAD_COMMAND_PREFIX = "llama serve -hf "
+const NEW_LINE_AFTER_X_CHARACTERS = 50;
 
 function MyApplet(metadata,orientation, panel_height, instance_id) {
     this._init(metadata,orientation, panel_height, instance_id);
@@ -45,15 +45,19 @@ MyApplet.prototype = {
 
         if( this.severStatus == 1 ) {
             this.set_applet_icon_path(this.metadata.path + "/icons/loading.svg")
-            this.set_applet_tooltip("Loading model: _");
+            this.set_applet_tooltip("Loading: _");
         }
         if(this.severStatus == -1) {
             this.set_applet_icon_path(this.metadata.path + "/icons/error.svg")
-            this.set_applet_tooltip("Model encountered an error!");
+            this.set_applet_tooltip("Encountered an error!");
         }
         if(this.severStatus == 2) {
+            this.set_applet_icon_path(this.metadata.path + "/icons/downloading.svg")
+            this.set_applet_tooltip("Downloading: _");
+        }
+        if(this.severStatus == 3) {
             this.set_applet_icon_path(this.metadata.path + "/icons/loaded.svg")
-            this.set_applet_tooltip("Model loaded: _");
+            this.set_applet_tooltip("Running: _");
         }
     },
 
@@ -61,12 +65,15 @@ MyApplet.prototype = {
         global.log("---Load model:" + modelToLoad);
     },
 
-    _convertFileNameToLoadCommand(filename){
-        //llama serve -hf unsloth/gemma-4-E4B-it-qat-GGUF:UD-Q4_K_XL
-        //models--google--gemma-4-E4B-it-qat-q4_0-gguf
-        //
-        return DEFAULT_LOAD_COMMAND_PREFIX + filename;
-    },
+_splitLongTextLines(inputText, maxCharactersPerLine) {
+    const patternString = "(.{1," + maxCharactersPerLine + "})"; // Result: ". {1,50}"
+    const regex = new RegExp(patternString, "g");
+
+    return inputText.replace(regex, "$1\n").trim();
+},
+
+
+
 
     on_applet_clicked(event) {
         let path = '/home/dorinh/.cache/huggingface/hub';
@@ -76,21 +83,27 @@ MyApplet.prototype = {
         
         this.menu.removeAll();      
         
-        for (const fileInfo of iter) {
-            let modelToLoad = this._convertFileNameToLoadCommand(fileInfo.get_name());
-            let menuItem = new PopupMenu.PopupMenuItem(modelToLoad); 
+        
+        let test = "llama serve hf unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q4_K_XL \
+    --temp 1.0 \
+    --top-p 0.95 \
+    --top-k 20 \
+    --min-p 0.00 \
+    --spec-type draft-mtp --spec-draft-n-max 2";
+        let modelToLoad=this._splitLongTextLines(test,NEW_LINE_AFTER_X_CHARACTERS);
+        let menuItem = new PopupMenu.PopupMenuItem(modelToLoad); 
 
-            if (this.loadedModel != modelToLoad)
-                menuItem.connect("activate", Lang.bind(this, function () {
-                this._loadModel(modelToLoad);
-            }));
+        if (this.loadedModel != modelToLoad)
+            menuItem.connect("activate", Lang.bind(this, function () {
+            this._loadModel(modelToLoad);
+        }));
 
-            this.menu.addMenuItem(menuItem);
-        }
+        this.menu.addMenuItem(menuItem);
+        
     
         this.menu.toggle(); 
 
-        this.severStatus = -1;
+        this.severStatus = 2;
         this._updateApplet();
     }
 };
